@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <memory>
 #include "mkl_wrapper.hpp"
+#include "eigen_wrapper.hpp"
 #include <eigen3/Eigen/Dense>
 template<class T>struct TemplateUnreachableAssert{
     TemplateUnreachableAssert(){
@@ -76,8 +77,7 @@ template<
     constexpr static int  direction = 1 - 2 * static_cast<int>(!is_freq);
     constexpr static bool template_valid_check()
     {
-        constexpr bool invalid_if = is_freq && !is_complex_type
-        ;
+        constexpr bool invalid_if = is_freq && !is_complex_type;
         return !(invalid_if);
     }
     static_assert(template_valid_check(), "invalid template");
@@ -133,8 +133,9 @@ template<
         }
         return p;
     }
-    template<class smart_ptr_type> constexpr static void transform(smart_ptr_type& pPlan)
+    template<class smart_ptr_type> constexpr static void transform(const smart_ptr_type& pPlan)
     {
+        static_assert(is_same_type, "fft with r2c & c2r ,please use fft_operator::transform");
         const auto meta = pPlan.get_deleter();
         if constexpr(sizeof(floating_point_type) == 4 )
             fftwf_execute(pPlan.get());
@@ -259,7 +260,41 @@ namespace fft_operator
         );
     }
     template<class smart_ptr_type> using plan_type = typename smart_ptr_type::deleter_type::plan_holder_type;
-    
+
+    template<class plan_type, class meta_type>
+    auto transform(const std::unique_ptr<plan_type, meta_type>& pPlan)
+    {
+        using plan_holder = meta_type::plan_holder_type;
+        using floating_point_type = plan_holder::floating_point_type;
+        constexpr int floating_byte_count = sizeof(floating_point_type);
+        const auto meta = pPlan.get_deleter();
+        if constexpr (!plan_holder::is_same_type && !plan_holder::is_freq)
+        {
+            if ((void*)meta.pFrom == (void*)meta.pTo)
+            {
+                const auto dim = meta.row_major_dim;
+                auto xsize = dim.back();
+                auto ysize = std::accumulate(dim.begin(), dim.end() - 1, 1, [](auto a, auto b) {return a * b; });
+                auto mat = mapping_to_matrix(meta.pFrom, xsize, ysize, (xsize / 2 + 1) * 2);
+                mat = Eigen::MatrixX<floating_point_type>(mapping_to_matrix(meta.pFrom, xsize, ysize));
+            }
+        }
+        if constexpr (floating_byte_count == 4)
+            fftwf_execute(pPlan.get());
+        else if constexpr (floating_byte_count == 8)
+            fftw_execute(pPlan.get());
+        if constexpr (!plan_holder::is_same_type && plan_holder::is_freq)
+        {
+            if ((void*)meta.pFrom == (void*)meta.pTo)
+            {
+                const auto dim = meta.row_major_dim;
+                auto xsize = dim.back();
+                auto ysize = std::accumulate(dim.begin(), dim.end() - 1, 1, [](auto a, auto b) {return a * b; });
+                auto mat = mapping_to_matrix(meta.pTo, xsize, ysize, (xsize / 2 + 1) * 2);
+                mapping_to_matrix(meta.pTo, xsize, ysize) = Eigen::MatrixX<floating_point_type>(mat);
+            }
+        }
+    }
 };
 
 #ifdef UNFINISHED_CODE

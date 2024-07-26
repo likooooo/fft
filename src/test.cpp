@@ -99,14 +99,16 @@ int fft_operator_inplace_test()
     /**
      * update matrix
     */
-    Map<matrix, 0, Stride<Dynamic, 1>> matrix_in_out(in.data(), xsize, ysize, Stride<Dynamic, 1>(stride, 1));
+    //Map<matrix, 0, Stride<Dynamic, 1>> matrix_in_out(in.data(), xsize, ysize, Stride<Dynamic, 1>(stride, 1));
+    Map<matrix> matrix_in_out(in.data(), xsize, ysize);
+
     matrix_in_out.setRandom();
     matrix origin(matrix_in_out);
     /**
      * 1/N * IFFT(FFT(X))
     */
-    plan::transform(pFFT);
-    plan::transform(pIFFT);
+    fft_operator::transform(pFFT);
+    fft_operator::transform(pIFFT);
     matrix_in_out /= (xsize * ysize);
 
     auto [diff, max_error] = cal_eps(origin, matrix_in_out);
@@ -174,8 +176,8 @@ int fft_operator_outplace_test()
     /**
      * 1/N * IFFT(FFT(X))
     */
-    plan::transform(pFFT);
-    plan::transform(pIFFT);
+    fft_operator::transform(pFFT);
+    fft_operator::transform(pIFFT);
     matrix_in_out /= (xsize * ysize);
 
     matrix diff = origin - matrix_in_out;

@@ -66,7 +66,7 @@ template <class T> void crop_test()
         vec_padded.data() + (ysize - rec_size) / 2 * stride + (xsize - rec_size) / 2, stride,
         vec.data()        + (ysize - rec_size) / 2 * xsize + (xsize - rec_size) / 2, xsize, rec_size, rec_size);
     auto [diff, max_error] = cal_eps(MatrixX<T>(origin), crop);
-    printf(" * crop test (%s) max %f\n", typeid(T).name(), (float)std::real(max_error));
+    printf("* crop test (%s)\n    max error %f\n", typeid(T).name(), (float)std::real(max_error));
     if(max_error != 0)
     {
         print_matrix(origin,"origin");
@@ -98,13 +98,13 @@ void compare_filp_spectrum_with_origin()
      * X* = FFT(X) * M (in center_corner_flip_with)
      */
     auto pFFT = plan::make_plan(vec.data(), (TTo *)vec.data(), xsize, ysize);
-    plan::transform(pFFT);
-    auto pOriginFFT = plan::make_plan(origin.data(), (TTo *)origin.data(), xsize, ysize);
-    plan::transform(pOriginFFT);
-    auto stride = (padding ? (xsize / 2 + 1): xsize);
+    auto pOriginFFT = plan::make_plan(origin.data(), (TTo*)origin.data(), xsize, ysize);
+    fft_operator::transform(pFFT);
+    fft_operator::transform(pOriginFFT);
+    auto stride = (padding ? (xsize / 2 + 1) : xsize);
     auto a = mapping_to_matrix((TTo*)origin.data(), stride, ysize);
     auto b = mapping_to_matrix((TTo*)vec.data(), stride, ysize);
-    center_corner_flip_with((TTo *)origin.data(), a.rows(), a.cols());
+    center_corner_flip_with((TTo*)origin.data(), a.rows(), a.cols());
     /**
      * compare X with X*
      */
@@ -129,17 +129,21 @@ void phase_modulate_test()
     using plan = plan_holder<T, TTo>;
     using float_type = typename plan::floating_point_type; 
     printf("* phase_modulate_test (%s)\n", typeid(T).name());
-    int xsize = 6, ysize = 6;
-    int rec_size = 2;
+    const int xsize = 6, ysize = 6;
+    const int rec_size = 2;
+    const float_type dx = 1, dy = 1;
     auto [vec, padding] = make_vec<T>(xsize, ysize);
-    vec[xsize * ysize / 2] = 1;
-    // rect_image(vec.data(), xsize, ysize, rec_size);
-    auto image = mapping_to_matrix(vec.data(), xsize, ysize, xsize + padding);
-    print_matrix(image, "origin ");
+    rect_image(vec.data(), xsize, ysize, rec_size);
+    auto image = mapping_to_matrix(vec.data(), xsize, ysize);
+    dynamic_vec<T> standard(vec.size());
+    int offset = (ysize - rec_size) / 2 * xsize + (xsize - rec_size) / 2;
+    CropImage(standard.data() + (offset + (int)dx + (int)dy * xsize), xsize,
+        vec.data() + offset, xsize,
+        rec_size, rec_size
+    );
     auto pFFT  = plan::make_plan(vec.data(), (TTo*)vec.data(), xsize, ysize);
     auto pIFFT = plan::make_inv_plan(pFFT);
-    plan::transform(pFFT);
-    float_type dx = 1, dy = 1;
+    fft_operator::transform(pFFT);
     if constexpr(plan::is_same_type)
         phase_modulate((TTo*)vec.data(), 
             xsize, ysize, 
@@ -152,20 +156,31 @@ void phase_modulate_test()
             dx, dy, 
             !plan::is_same_type
         );
-
-    plan::transform(pIFFT);
+    fft_operator::transform(pIFFT);
     VecScala(vec.size(), T(1.0/(xsize * ysize)), vec.data());
-    print_matrix(image, "shifted image ");
 
+    auto [error_image, max_error] = cal_eps(
+        MatrixX<T>(image),
+        mapping_to_matrix(standard.data(), xsize, ysize)
+    );
+    printf("    max error : %f\n", (float)max_error);
+    if (max_error > 9e-6)
+    {
+        print_matrix(image, "phase shift ");
+        print_matrix(mapping_to_matrix(standard.data(), xsize, ysize), "crop shift ");
+        print_matrix(error_image, "error_image ");
+        throw std::runtime_error("max error out of range");
+    }
 }
 
 int main()
 {
-    /*phase_modulate_test<std::complex<float>>();
     phase_modulate_test<float, std::complex<float>>();
-    return 1;*/
+    //phase_modulate_test<double, std::complex<double>>();
     for (int i = 0; i < 100; i++)
     {
+        phase_modulate_test<std::complex<float>>();
+        phase_modulate_test<std::complex<double>>();
         compare_filp_spectrum_with_origin< std::complex<float>>();
         compare_filp_spectrum_with_origin< std::complex<double>>();
 #ifdef UNFINISHED_CODE
