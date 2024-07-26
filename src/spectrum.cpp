@@ -129,9 +129,12 @@ void phase_modulate_test()
     using plan = plan_holder<T, TTo>;
     using float_type = typename plan::floating_point_type; 
     printf("* phase_modulate_test (%s)\n", typeid(T).name());
-    const int xsize = 6, ysize = 6;
-    const int rec_size = 2;
-    const float_type dx = 1, dy = 1;
+    int min_rec_size = 2;
+    int rec_size = random_operator<int>()(min_rec_size, min_rec_size * 2);
+    int xsize = random_operator<int>()(min_rec_size * 2, min_rec_size * 4);
+    int ysize = random_operator<int>()(min_rec_size * 2, min_rec_size * 4);
+    const float_type dx = std::min((xsize - rec_size + 1) / 2, 1);
+    const float_type dy = std::min((ysize - rec_size + 1) / 2, 1);
     auto [vec, padding] = make_vec<T>(xsize, ysize);
     rect_image(vec.data(), xsize, ysize, rec_size);
     auto image = mapping_to_matrix(vec.data(), xsize, ysize);
@@ -146,15 +149,13 @@ void phase_modulate_test()
     fft_operator::transform(pFFT);
     if constexpr(plan::is_same_type)
         phase_modulate((TTo*)vec.data(), 
-            xsize, ysize, 
-            dx, dy, 
-            !plan::is_same_type
+            xsize, xsize, ysize,
+            dx, dy
         );
     else
        phase_modulate((TTo*)vec.data(), 
-            (xsize / 2 + 1), ysize, 
-            dx, dy, 
-            !plan::is_same_type
+            xsize, (xsize / 2 + 1), ysize,
+            dx, dy
         );
     fft_operator::transform(pIFFT);
     VecScala(vec.size(), T(1.0/(xsize * ysize)), vec.data());
@@ -175,12 +176,13 @@ void phase_modulate_test()
 
 int main()
 {
-    phase_modulate_test<float, std::complex<float>>();
-    //phase_modulate_test<double, std::complex<double>>();
     for (int i = 0; i < 100; i++)
     {
+        phase_modulate_test<float, std::complex<float>>();
+        phase_modulate_test<double, std::complex<double>>();
         phase_modulate_test<std::complex<float>>();
         phase_modulate_test<std::complex<double>>();
+
         compare_filp_spectrum_with_origin< std::complex<float>>();
         compare_filp_spectrum_with_origin< std::complex<double>>();
 #ifdef UNFINISHED_CODE
