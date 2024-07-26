@@ -33,3 +33,11 @@ struct fftw_allocator
 };
 
 template<class T> using dynamic_vec = std::vector<T, fftw_allocator<T>>;
+
+template<class T, class TDim,class ...TDims> std::tuple<dynamic_vec<T>, size_t> make_vec(TDim d0, TDims ...rest)
+{
+    std::array<TDim, sizeof...(rest) + 1> n{d0, rest...};
+    auto prod = std::accumulate(n.begin() + 1, n.end(), (size_t)1, [](auto a, auto b){return a*b;});
+    auto withpadding = (std::is_floating_point_v<T> ? (n[0] / 2 + 1)* 2 : n[0]);
+    return std::make_tuple(dynamic_vec<T>(prod * withpadding), withpadding - n[0]);
+}

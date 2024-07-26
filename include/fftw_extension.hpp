@@ -3,14 +3,6 @@
 #include <iostream>
 #include <random>
 #include "fftw_allocator.hpp"
-#if __cplusplus < 201103L
-    namespace std
-    {
-        template<class T>
-        struct span;//TODO
-    }
-#endif
-
 
 template<class T, size_t extent = std::dynamic_extent>
 inline std::ostream &operator<<(std::ostream &out, std::span<T, extent> span)
@@ -49,23 +41,6 @@ template<class TContainer> requires container_with_fftw_alloc<TContainer>
 inline std::ostream &operator<<(std::ostream &out, const TContainer& container)
 {
     return out << std::span(container.begin(), container.end());
-}
-
-template<class T> inline bool operator==(const dynamic_vec<T>& x, const dynamic_vec<T>& y)
-{
-    if(x.size() == y.size())
-    {
-        for(int i = 0; i < x.size(); i++)
-        {
-            if(std::abs(x[i] - y[i]) > 1e-6) 
-            {
-                std::cout << "error at " << i << " "<< x[i] << " " << y[i]<< " " << std::abs(x[i] - y[i]) << "\n";
-                return false;
-            }
-        }
-        return true;
-    }
-    return false;
 }
 // TODO
 enum class random_distribution

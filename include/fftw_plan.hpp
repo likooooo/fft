@@ -38,7 +38,7 @@ struct fft_dim
     }
     template<class TDim> static void update_dim_sequence(TDim&& dim)
     {
-        // if constexpr(!is_row_major) std::reverse(dim.begin(), dim.end());
+        if constexpr(!is_row_major) std::reverse(dim.begin(), dim.end());
     }
 private:
     template<class ...Args> constexpr static auto get_impl(Args... args)
@@ -58,7 +58,7 @@ template<
     class T/*TFrom*/, class TTo = T,  
     unsigned flag = FFTW_ESTIMATE, 
     fft_domain current_domain = fft_domain::space,
-    matrix_major major = matrix_major::row_major,
+    matrix_major major = matrix_major::col_major,
     class dims = fft_dim<major>
 > struct plan_holder
 {
@@ -135,63 +135,11 @@ template<
     }
     template<class smart_ptr_type> constexpr static void transform(smart_ptr_type& pPlan)
     {
-        constexpr bool need_transpose = !is_same_type;//&& !dims::is_row_major; 
         const auto meta = pPlan.get_deleter();
-        if constexpr(need_transpose  && direction == FFTW_FORWARD)
-        {
-            // auto [slow, fast] = meta.row_major_dim;
-            // fast = (fast/2 + 1)*2;
-            // transpose<floating_point_type>(
-            //     (floating_point_type*)meta.pFrom, 
-            //     row_size, col_size
-            // ); 
-            // auto [slow, fast] = meta.row_major_dim;
-            // std::cout << "***"<< slow << fast<<"\n";
-            // auto stride = (fast/2 + 1)*2;
-            // floating_point_type* p = (floating_point_type*)meta.pFrom;
-            // p += (slow - 1) * stride;
-            // for(int y = 0; y < slow - 1; y++)
-            // {
-            //     std::copy(p, p + fast, p + 2);
-            //     p[0] = p[1] = 0;
-            //     p += stride;
-            // }
-            // std::cout << Eigen::Map<Eigen::MatrixX<floating_point_type>>((floating_point_type*)meta.pFrom, stride, slow)
-            //     <<"\n";
-            // exit(0);
-        }
         if constexpr(sizeof(floating_point_type) == 4 )
             fftwf_execute(pPlan.get());
         else if constexpr(sizeof(floating_point_type) == 8 )
             fftw_execute(pPlan.get());
-        if constexpr(need_transpose)
-        {
-            floating_point_type* p = (floating_point_type*)meta.pTo;
-            if constexpr(meta.row_major_dim.size() == 2)
-            {
-                auto [slow, fast] = meta.row_major_dim;
-                auto stride = (fast/2 + 1)*2;
-                floating_point_type* p = (floating_point_type*)meta.pTo;
-                p += stride;
-                for(int y = 0; y < slow - 1; y++)
-                {
-                    // std::copy(p, p + fast, p - 2);
-                    p += stride;
-                }
-                // auto [ysize, xsize] = meta.row_major_dim;
-                // ysize = (ysize/2 + 1)*2;
-                // auto row_size = ysize;
-                // auto col_size = xsize;
-                // transpose<floating_point_type>(
-                //     (floating_point_type*)meta.pFrom, 
-                //     col_size, row_size
-                // ); 
-            }
-            else if constexpr(meta.row_major_dim.size() > 2)
-            {
-                printf("unfinished code\n");
-            }
-        }
     }
     template<class fft_plan_type, class deleter> constexpr static auto make_inv_plan(const std::unique_ptr<fft_plan_type, deleter>& pPlan)
     {

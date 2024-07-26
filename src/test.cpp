@@ -1,12 +1,7 @@
-
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Eigenvalues>
-#include <fftw3.h>
 #include <fftw_extension.hpp>
-#include <vector>
-#include <fftw_allocator.hpp>
-#include <complex>
 #include <fftw_plan.hpp>
+#include <eigen_wrapper.hpp>
+#include <vector>
 #include <typeinfo>
 
 using plan_holder_f = plan_holder<float>;
@@ -81,7 +76,7 @@ int fft_operator_inplace_test()
     /**
      * make plan
     */
-    auto pFFT = plan::make_plan(in.data(), out->data(), ysize, xsize); 
+    auto pFFT = plan::make_plan(in.data(), out->data(), xsize, ysize); 
     {
         auto [pin, pout, domain, dim] = fft_operator::get_meta(pFFT);
         current_domain = domain;
@@ -105,9 +100,8 @@ int fft_operator_inplace_test()
      * update matrix
     */
     Map<matrix, 0, Stride<Dynamic, 1>> matrix_in_out(in.data(), xsize, ysize, Stride<Dynamic, 1>(stride, 1));
+    matrix_in_out.setRandom();
     matrix origin(matrix_in_out);
-    origin.setRandom();
-    matrix_in_out = origin; 
     /**
      * 1/N * IFFT(FFT(X))
     */
@@ -115,17 +109,7 @@ int fft_operator_inplace_test()
     plan::transform(pIFFT);
     matrix_in_out /= (xsize * ysize);
 
-    matrix diff = origin - matrix_in_out;
-    for(auto& x : diff.reshaped()) x = std::abs(x);
-    auto max_error = std::real(
-        *std::max_element(
-            diff.reshaped().begin(), 
-            diff.reshaped().end(), 
-            [](auto a, auto b){ 
-                return std::abs(a) < std::abs(b);
-            }
-        )
-    );
+    auto [diff, max_error] = cal_eps(origin, matrix_in_out);
     std::cout << "max error : " << max_error <<"\n";
     if( max_error > 9e-6 )
     {   
@@ -161,7 +145,7 @@ int fft_operator_outplace_test()
     /**
      * make plan
     */
-    auto pFFT = plan::make_plan(in.data(), out.data(), ysize, xsize); 
+    auto pFFT = plan::make_plan(in.data(), out.data(), xsize, ysize); 
     {
         auto [pin, pout, domain, dim] = fft_operator::get_meta(pFFT);
         current_domain = domain;
@@ -184,10 +168,9 @@ int fft_operator_outplace_test()
     /**
      * update matrix
     */
-    Map<matrix> matrix_in_out(in.data(), xsize, ysize);
+    auto matrix_in_out = mapping_to_matrix(in.data(), xsize, ysize);
+    matrix_in_out.setRandom();
     matrix origin(matrix_in_out);
-    origin.setRandom();
-    matrix_in_out = origin; 
     /**
      * 1/N * IFFT(FFT(X))
     */
@@ -234,157 +217,38 @@ auto run_test()
         plan_test<e_vec_zd>(128),
         plan_test<vec_zd>(128),
 
-        fft_operator_inplace_test<std::complex<float>>(),
         fft_operator_inplace_test<float, std::complex<float>>(),
-        fft_operator_inplace_test<std::complex<double>>(),
+        fft_operator_inplace_test<std::complex<float>>(),
         fft_operator_inplace_test<double, std::complex<double>>(),
+        fft_operator_inplace_test<std::complex<double>>(),
 
-        fft_operator_outplace_test<std::complex<float>>(),
         fft_operator_outplace_test<float, std::complex<float>>(),
-        fft_operator_outplace_test<std::complex<double>>(),
+        fft_operator_outplace_test<std::complex<float>>(),
         fft_operator_outplace_test<double, std::complex<double>>(),
+        fft_operator_outplace_test<std::complex<double>>(),
 
         0
     };
 }
-auto test_entries = run_test();
-
 
 int main()
 {
+    run_test();
     int repeat_count = 100;
     for(int i = 0; i < repeat_count; i++)
     {
        auto n = {
-            fft_operator_inplace_test<std::complex<float>>(),
             fft_operator_inplace_test<float, std::complex<float>>(),
-            fft_operator_inplace_test<std::complex<double>>(),
+            fft_operator_inplace_test<std::complex<float>>(),
             fft_operator_inplace_test<double, std::complex<double>>(),
+            fft_operator_inplace_test<std::complex<double>>(),
 
-            fft_operator_outplace_test<std::complex<float>>(),
             fft_operator_outplace_test<float, std::complex<float>>(),
-            fft_operator_outplace_test<std::complex<double>>(),
-            fft_operator_outplace_test<double, std::complex<double>>()
+            fft_operator_outplace_test<std::complex<float>>(),
+            fft_operator_outplace_test<double, std::complex<double>>(),
+            fft_operator_outplace_test<std::complex<double>>()
         };
     }
     mkl_test();
     std::cout <<"\n---------------------------\n   test end\n";
-}
-
-
-
-
-
-
-
-
-
-
-
-int example() {
-    int N0 = 4, N1 = 8; // 例子中的维度
-    double *in; // 输入数据（实数）
-    fftw_complex *out; // 输出数据（复数）
-    fftw_complex *in_complex; // 用于 c2r 变换的输入数据（复数）
-    double *out_real; // 输出数据（实数）
-    fftw_plan p_r2c, p_c2r;
-
-    in = (double*) fftw_malloc(sizeof(double) * (N0 * N1));
-    out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * ((N0/2+1) * N1));
-    // in = (double*)out;
-    // in_complex = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * ((N0/2+1) * N1));
-    in_complex = out;
-    out_real = (double*) fftw_malloc(sizeof(double) * (N0 * N1));
-
-    // 创建 r2c 计划
-    p_r2c = fftw_plan_dft_r2c_2d(N0, N1, in, out, FFTW_ESTIMATE);
-
-    // 创建 c2r 计划
-    p_c2r = fftw_plan_dft_c2r_2d(N0, N1, in_complex, out_real, FFTW_ESTIMATE);
-
-    // 填充输入数据（列主序）
-    // 假设你的列主序数据数组是 `data`
-    for (int i = 0; i < N0; ++i) {
-        for (int j = 0; j < N1; ++j) {
-            in[i * N1 + j] = random_operator< double>()(0.0+ 1e6, 1.0+ 1e6);
-        }
-    }
-    // transpose<double>(in, N1, N0 + 2);
-
-    // 执行 r2c 变换
-    fftw_execute(p_r2c);
-    // transpose<double>(out_real, N0 + 2, N1);
-
-    // // 转换复数数组为用于 c2r 变换的复数数组
-    // for (int i = 0; i < (N0/2+1) * N1; ++i) {
-    //     in_complex[i][0] = out[i][0];
-    //     in_complex[i][1] = out[i][1];
-    // }
-
-    // 执行 c2r 变换
-    fftw_execute(p_c2r);
-
-    Eigen::Map<Eigen::MatrixX<double>> a(in, N0, N1);
-    Eigen::Map<Eigen::MatrixX<double>> b(out_real, N0, N1);
-    b /= (N0 * N1);
-    std::cout << (a - b) <<"\n";
-    // 处理输出数据
-    // 这里你需要根据实际情况来处理变换后的数据
-
-    // 释放资源
-    fftw_destroy_plan(p_r2c);
-    fftw_destroy_plan(p_c2r);
-    // fftw_free(in);
-    fftw_free(out);
-    // fftw_free(in_complex);
-    fftw_free(out_real);
-
-    return 0;
-}
-int example1() {
-    // 假设x方向的大小为M，y方向的大小为N
-    int M = 5; // x方向的大小
-    int N = 3; // y方向的大小
-
-    // 输入/输出缓冲区
-    fftw_complex *in_out;
-    fftw_plan plan_r2c, plan_c2r;
-
-    // 分配内存（原地变换，因此只需要为复数数组分配空间）
-    // 对于二维变换，复数数组的大小是 (M/2+1) * N
-    in_out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * ((M / 2 + 1) * N));
-
-    // 创建二维R2C变换计划
-    plan_r2c = fftw_plan_dft_r2c_2d(N, M, (double*)in_out, in_out, FFTW_ESTIMATE);
-
-    // 创建二维C2R变换计划
-    plan_c2r = fftw_plan_dft_c2r_2d(N, M, in_out, (double*)in_out, FFTW_ESTIMATE);
-
-    memset(in_out, 0, sizeof(fftw_complex) * ((M / 2 + 1) * N));
-    // in_out[0][0] = 1;
-    in_out[1][0] = 1;
-
-
-    // 执行R2C变换
-    fftw_execute(plan_r2c);
-
-    // 注意：此时in_out数组包含变换后的复数结果
-
-    // 执行C2R变换
-    fftw_execute(plan_c2r);
-
-    // 输出结果，由于C2R变换的结果是实数，我们需要除以(M * N)来得到正确的结果
-    for (int j = 0; j < N; ++j) {
-        for (int i = 0; i < M; ++i) {
-            printf("%f ", ((double*)in_out)[j * M + i] / (M * N));
-        }
-        printf("\n");
-    }
-
-    // 释放内存和计划
-    fftw_destroy_plan(plan_r2c);
-    fftw_destroy_plan(plan_c2r);
-    fftw_free(in_out);
-
-    return 0;
 }

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+﻿cmake_minimum_required(VERSION 3.22)
 project(fftw3)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,7 +17,7 @@ pkg_search_module(EIGEN REQUIRED eigen3 IMPORTED_TARGET)
 include_directories(PkgConfig::EIGEN )
 
 # mkl
-find_package(MKL CONFIG REQUIRED PATHS $ENV{MKLROOT})
+find_package(MKL CONFIG REQUIRED PATHS /opt/intel/oneapi/mkl/latest/) #$ENV{MKLROOT}
 link_libraries(MKL::MKL)
 message(STATUS "Imported oneMKL targets: ${MKL_IMPORTED_TARGETS}")
 
