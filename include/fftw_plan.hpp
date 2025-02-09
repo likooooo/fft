@@ -5,7 +5,7 @@
 #include <type_traits>
 #include <algorithm>
 #include <memory>
-#include "mkl_wrapper.hpp"
+#include <mekil/mkl_wrapper.hpp>
 #include "eigen_wrapper.hpp"
 #include <eigen3/Eigen/Dense>
 template<class T>struct TemplateUnreachableAssert{

@@ -1,7 +1,7 @@
 #pragma once
 #include "fftw_plan.hpp"
 #include <cmath>
-#include "mkl_wrapper.hpp"
+#include <mekil/mkl_wrapper.hpp>
 
 void cross_spectrum()
 {

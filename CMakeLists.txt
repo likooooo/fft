@@ -17,10 +17,7 @@ pkg_search_module(EIGEN REQUIRED eigen3 IMPORTED_TARGET)
 include_directories(PkgConfig::EIGEN )
 
 # mkl
-find_package(MKL CONFIG REQUIRED PATHS /opt/intel/oneapi/mkl/latest/) #$ENV{MKLROOT}
-link_libraries(MKL::MKL)
-message(STATUS "Imported oneMKL targets: ${MKL_IMPORTED_TARGETS}")
-
+find_package(mekil)
 # add executable
 include_directories(${CMAKE_CURRENT_LIST_DIR}/include)
 file(GLOB list ${CMAKE_CURRENT_LIST_DIR}/src/*.cpp)
