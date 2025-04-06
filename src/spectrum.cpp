@@ -5,6 +5,19 @@
 #include <typeinfo>
 #include <spectrum_analysis.hpp>
 using namespace Eigen;
+template<class T> void center_corner_flip_with(T* pInFreq, int xsize, int ysize) requires (is_c<T> || is_z<T>)
+{
+    for(int y = 0; y < ysize; y++)
+    {
+        for(int x = 0; x < xsize; x++)
+        {
+            if((x%2 + y%2) == 1)
+            {
+                pInFreq[y*xsize + x] *= -1;
+            }        
+        }
+    }
+}
 template <class T>
 void rect_image(T *p, int width, int height, int rec_size)
 {
@@ -144,22 +157,7 @@ void phase_modulate_test()
         vec.data() + offset, xsize,
         rec_size, rec_size
     );
-    auto pFFT  = plan::make_plan(vec.data(), (TTo*)vec.data(), xsize, ysize);
-    auto pIFFT = plan::make_inv_plan(pFFT);
-    fft_operator::transform(pFFT);
-    if constexpr(plan::is_same_type)
-        phase_modulate((TTo*)vec.data(), 
-            xsize, xsize, ysize,
-            dx, dy
-        );
-    else
-       phase_modulate((TTo*)vec.data(), 
-            xsize, (xsize / 2 + 1), ysize,
-            dx, dy
-        );
-    fft_operator::transform(pIFFT);
-    VecScala(vec.size(), T(1.0/(xsize * ysize)), vec.data());
-
+    shift<T, TTo>(vec.data(), xsize, ysize, dx, dy);
     auto [error_image, max_error] = cal_eps(
         MatrixX<T>(image),
         mapping_to_matrix(standard.data(), xsize, ysize)

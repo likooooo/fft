@@ -28,3 +28,16 @@ foreach(cpp IN LISTS list)
   add_executable(${base_name} ${cpp})
   target_link_libraries(${base_name}  )
 endforeach()
+
+include(${PROJECT_SOURCE_DIR}/cmake/auto_ctest.cmake)
+
+
+file(GLOB_RECURSE HEADERS "include/*.hpp" "include/*.h")
+set(PACKAGE_INCLUDE_INSTALL_DIR include/fft)
+install(FILES ${HEADERS} DESTINATION ${PACKAGE_INCLUDE_INSTALL_DIR})
+
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/fftConfig.cmake"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/fftConfig-version.cmake"
+    DESTINATION cmake
+)

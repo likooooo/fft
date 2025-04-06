@@ -250,7 +250,7 @@ namespace fft_operator
     template<class plan_type, class meta_type> 
     auto get_meta(const std::unique_ptr<plan_type, meta_type>& pPlan)
     {
-        using plan_holder = meta_type::plan_holder_type;
+        using plan_holder = typename meta_type::plan_holder_type;
         auto& meta = pPlan.get_deleter();
         return std::make_tuple(
             meta.pFrom, meta.pTo, 
@@ -264,8 +264,8 @@ namespace fft_operator
     template<class plan_type, class meta_type>
     auto transform(const std::unique_ptr<plan_type, meta_type>& pPlan)
     {
-        using plan_holder = meta_type::plan_holder_type;
-        using floating_point_type = plan_holder::floating_point_type;
+        using plan_holder = typename meta_type::plan_holder_type;
+        using floating_point_type = typename plan_holder::floating_point_type;
         constexpr int floating_byte_count = sizeof(floating_point_type);
         const auto meta = pPlan.get_deleter();
         if constexpr (!plan_holder::is_same_type && !plan_holder::is_freq)

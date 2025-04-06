@@ -1,0 +1,4 @@
+${CMAKE_BINARY_DIR}/spectrum
+golden;
+${CMAKE_BINARY_DIR}/fft_test
+golden;
