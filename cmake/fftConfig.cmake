@@ -11,7 +11,8 @@ message(STATUS "Found fft")
 get_filename_component(_current_dir "${CMAKE_CURRENT_LIST_FILE}" PATH)
 
 # # Include the exported targets file.
-include("${_current_dir}/fftTargets.cmake")
+# include("${_current_dir}/fftTargets.cmake")
+
 # Set the package version variables.
 set(fft_VERSION_MAJOR 1) # Replace with your major version
 set(fft_VERSION_MINOR 0) # Replace with your minor version
@@ -29,11 +30,10 @@ if(NOT "${fft_FIND_VERSION}" STREQUAL "")
     endif()
 endif()
 
-find_package(MKL CONFIG REQUIRED PATHS /opt/intel/oneapi/mkl/latest/)
-# link_libraries(MKL::MKL)
-link_libraries( ${MKL_IMPORTED_TARGETS})
-
-message(STATUS "Imported oneMKL targets: ${MKL_IMPORTED_TARGETS}")
+# find_package(MKL CONFIG REQUIRED PATHS /opt/intel/oneapi/mkl/latest/)
+# # link_libraries(MKL::MKL)
+# link_libraries( ${MKL_IMPORTED_TARGETS})
+# message(STATUS "Imported oneMKL targets: ${MKL_IMPORTED_TARGETS}")
 
 # Mark the package as found.
 set(fft_FOUND TRUE)
