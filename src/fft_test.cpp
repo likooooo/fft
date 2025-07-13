@@ -30,10 +30,10 @@ int dims_test(bool enable_print = true)
     std::cout.setstate(enable_print ? std::ios_base::goodbit : std::ios_base::failbit);
     std::cout << "    input dim [1, 2, 3]\n";
     auto dim = fft_dim<m>::get(1, 2, 3);
-    std::cout << "    dim args in arguments : " << std::span{dim} << "\n";
+    std::cout << "    dim args in arguments : " << std::span<int>(dim) << "\n";
     
     auto dim1 = fft_dim<m, 1, 2, 3>::get();
-    std::cout << "    dim args in template  : " << std::span{dim1} << "\n";
+    std::cout << "    dim args in template  : " << std::span<int>(dim) << "\n";
     return 0;
 }
 template<class vec, class ...T> int plan_test(T ...xsize)
@@ -43,7 +43,7 @@ template<class vec, class ...T> int plan_test(T ...xsize)
     using plan = plan_holder<scalar>;
     auto dims = fft_dim<matrix_major::col_major>::get(xsize...);
     std::stringstream dimstr;
-    dimstr << std::span{dims};
+    dimstr << std::span<int>(dims);
     printf("\n * plan test (%s) dim : %s\n", typeid(scalar).name(), dimstr.str().c_str());
     
     auto n = std::accumulate(dims.begin() + 1, dims.end(), ((dims.front()/2 + 1)*2), [](auto a, auto b){return a * b;});
